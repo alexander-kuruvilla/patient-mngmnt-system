@@ -1,0 +1,284 @@
+Use response and request DTOs
+Use validation for java DTOs
+@valid is needed to trigger the validations
+Handle the exceptions using global exceptions for a cleaner response
+
+while we use the same DTOs for update and create, there might be comflicts and we need to avoid certain fields from validation
+like reg date and id etc that is not needed in update
+so we create validators
+
+instead of @Valid we use @Validated({Default.class, CreatePatientValidationGroup.class which is the same but a bit fine grained
+
+
+The open api standard documentation for spring applications:
+
+http://localhost:4000/v3/api-docs
+
+visible after adding the swagger dependency 
+The below one is visible when adding deps for the ui not just the api
+http://localhost:4000/swagger-ui/index.html#/
+
+
+C:\Users\ADMIN>docker network create my_custom_network
+d641434652a68a14e85bf0152401bdf64db90bdbaa9ab303e352f041129af838
+
+
+docker run --name patient-service --network my_custom_network -e SPRING_DATASOURCE_URL=jdbc:postgresql://patient-service-db:5432/db -p 8080:8080 your-spring-boot-image
+
+
+we auto seeded the table and the database from the sql file in the patient service
+
+
+GRPC google remote protocol call
+uses http2 and is low latency for microservice communication compared to REST
+its got quite a lot of dependencies and changes in the build portion of pomxml
+
+these numbers are for serilisation and deserialisation and mustbe unique. required for protobuf and grpc
+
+	string patientId = 1;
+	string name = 2;
+	string email = 3;
+	
+	
+	streamobserver in grpc
+	handles back and forth communication between services better without multiple REST calls in Java
+	
+	
+	Steps to create and run a spring boot application in eclipse:
+	
+	Add Docker file to the root of the project
+	then right click docker file and run as docker build confugiration
+	then run that image on the container
+	when running add the necessary ports to exposed
+	as well as any env variables that are needed
+	
+	
+	Kafka
+	
+	Has a inidependent service called kafka broker
+	has a thing called kafka "topic" basically segregated streams of data related to something specific
+	it holds events
+	
+	grpc 1:1 immendiate response b/w microservices
+	Kafka 1: many, no need of immediate response
+	
+	
+	KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094;
+	KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER;
+	KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093;
+	KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT;
+	KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094;
+	KAFKA_CFG_NODE_ID=0;
+	KAFKA_CFG_PROCESS_ROLES=controller,broker
+	 KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+
+    Advertised listeners are what Kafka tells clients to use to connect to it.
+
+    Here, it’s saying:
+
+        Clients inside the Docker network should connect via PLAINTEXT://kafka:9092
+
+        Clients outside (e.g., on the host machine) should connect via EXTERNAL://localhost:9094
+
+🧠 Why? Kafka runs in a container and may have different network views for internal vs. external clients.
+🔧 KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+
+    These define what network interfaces and ports Kafka listens on:
+
+        PLAINTEXT://:9092 → for regular client traffic inside the cluster
+
+        EXTERNAL://:9094 → for external client access (e.g., from your host)
+
+        CONTROLLER://:9093 → for internal inter-broker/controller communication
+
+🔐 KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+
+    This maps listener names to their security protocols (e.g., SSL, PLAINTEXT, SASL).
+
+    Here, everything uses PLAINTEXT (i.e., no encryption or authentication).
+
+🧠 KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+    Kafka KRaft (Kafka without ZooKeeper) requires identifying which listener is used for controller-to-controller communication.
+
+    This says: use the CONTROLLER listener (port 9093).
+
+⚙️ KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+
+    In KRaft mode, Kafka needs a quorum of controllers.
+
+    This says:
+
+        Node ID 0 is a controller,
+
+        It can be reached at kafka:9093
+
+(Use multiple voters for high availability: e.g., 0@node1:9093,1@node2:9093)
+🧾 KAFKA_CFG_NODE_ID=0
+
+    This sets the ID of the node in the cluster (used in the quorum voters list above).
+
+🔁 KAFKA_CFG_PROCESS_ROLES=controller,broker
+
+    This node is acting as both a controller and a broker.
+
+    In KRaft mode, Kafka nodes can take on one or both roles.
+	
+The controller property in the last roles is used to tell it its the "cyber_controller" of the cluster of brokers
+
+
+last stopped at 5:05
+
+So for creating kafka producer add the relevant kafka depedencies in the patient service (producer)
+we then create a new protobuf file to be used as the event object. this is a protobuf file but does not mean that it is made for grpc
+after that clean and install mvn to get the files.
+
+create a new KafkaProducer service (annotate with @Service)
+
+it must declare a kafkatemplate with a key value format to send the data
+	private final KafkaTemplate<String, byte[]> kafkaTemplate;
+then write a method to send the event which accepts a patient object and sets the properties to the events objcet
+
+Event type should also be set and it must correspond to the type of event "PATIENT_CREATED"
+
+its basically a subcategory within a Patient topic
+
+add these in the applicaiton properties:
+
+spring.kafka.producer.key-serializer= org.apache.kafka.common.serialization.StringSerializer
+spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.ByteArraySerializer
+
+
+Basically it defines what our template key and values are KafkaTemplate<String, byte[]>
+the key is a string (StringSerializer)
+and the value is byteArray (ByteArraySerializer)
+
+The other configuration is added as a env variable
+SPRING_KAFKA_BOOTSTRAP_SERVERS kafka:9092
+
+docker will find the kafka named container and bind to it
+
+NFO] Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/data/spring-data-commons/3.4.0/spring-data-commons-3.4.0.jar (1.5 MB at 229 kB/s)
+[INFO] Downloaded from central: https://repo.maven.apache.org/maven2/io/projectreactor/reactor-core/3.7.0/reactor-core-3.7.0.jar (1.9 MB at 277 kB/s)
+
+API gateway
+using hte spring cloud gateway
+you can use filters to strip or rename certain parts ofthe request
+the application properties are changed to application yml
+
+then before starting the bind ports of the patient service was disabled so that it was no longer accessible outside just under the internal network
+
+now with everything started we can access the application at http://localhost:4004/api/patients/
+
+
+we are creating a auth service so use the same prosgres image and run on different container with different host port 5001
+and changed the bind mounts to another file to save the db data
+
+the auth service
+
+SPRING_DATASOURCE_PASSWORD=password
+SPRING_DATASOURCE_URL=jdbc:postgresql://auth-service-db:5432/db
+SPRING_DATASOURCE_USERNAME=admin_user
+SPRING_JPA_HIBERNATE_DDL_AUTO=update
+SPRING_SQL_INIT_MODE=always
+
+
+we have added two endpoint to the auth service one to verify the credentials and return the JWT
+another to validate the JWT
+then mapped the service through the API gateway by adding an entry in the application.yml file
+
+to ensure that all the requests are protected by the jwt checks,
+
+We create a class called JwtValidationGatewayFilterFactory -contain the login to intecept the requests and send a validate
+request to the webclient
+
+in the yml file, under filters we add JwtValidation to the endpoints that we need protected.
+
+the suffix *GatewayFilterFactory is necessary for spirng to search for an associated filter named "JwtValidation"
+it is a spring boot convention
+
+
+Unit testing
+test individual elements in isolation
+
+Integration testing - multiple components working together like controller, service , reposotory
+E2E testing - test the complete application workflow from Ui to APi
+
+integration testing using rest assured
+
+add these two dependencies:
+
+  <dependency>
+    <groupId>io.rest-assured</groupId>
+    <artifactId>rest-assured</artifactId>
+    <version>5.3.0</version>
+    <scope>test</scope>
+</dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.4</version>
+      <scope>test</scope>
+    </dependency>
+
+create a seperate maven project
+
+
+sometimes static imports such as given() needs to be manually installed
+these services are going to be seperate from the microservices architecture
+it will be akin to a user testing the services
+
+		// the given(), when(), then() syntax is used
+		
+		
+		
+		Localstack -- simulate AWS for free in local
+		
+		ECS akin to kubernetes
+		ECS ->  ECS cluster -> ECS Service -> ECS task (the actual thing that manages the containers) This has a task definition blueprint
+		
+		ALB - routes external traffic to our ECS services in the VPC
+			- it sits in the public subnet 
+			- forwards requests to private subnets
+			- secure entry point for internet traffic
+			
+stopped at 9:33
+
+
+Iac infrastructure as code is a way to create the aws stuff via java code
+
+
+java can be used to create a cloud formation template to create the stuff
+it will have all of the infrastructure defined on it
+
+
+a seperate project is created for the cloud formation stuff
+
+create a new maven project with the archetype maven-archetype-quickstart
+
+Create a folder named stack and create a file called LocalStack class
+
+Here we extend the Stack from aws
+then add a synthesizer to convert to java code to cloud formation templates
+
+Bootstraplesssynthesizer -- skip initial bootstraping since its not needed for localstack
+
+first we create VPC in the cloud stack
+btw just run the class to create the json file in the out folder
+localstack.template.json
+
+a sh script file has been created to run the template on the localstack
+
+provided the localhost:4566 as the address to run on local
+
+changes have been done in api gatewwaty to dynamically resolve the routes
+
+will get this after sh execution:
+
+
+Waiting for stack create/update to complete
+Successfully created/updated stack - patient-management
+lb-62769017.elb.localhost.localstack.cloud
+
+
+use lb-62769017.elb.localhost.localstack.cloud for the postman calls
